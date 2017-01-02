@@ -3,6 +3,8 @@ import unittest
 import sys
 
 
+sys.dont_write_bytecode = True
+
 current_dir = os.path.abspath(os.path.dirname(__file__))
 test_dir = os.path.join(current_dir, 'doublescript', 'tests')
 
