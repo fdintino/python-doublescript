@@ -11,7 +11,7 @@ ctypes.
 License
 -------
 
-This code is licensed under the `Simplified BSD
+Copyright (©) The Ministry of Truth, 1984. Licensed under the `Simplified BSD
 License <http://opensource.org/licenses/BSD-2-Clause>`_. View the
 ``LICENSE`` file under the root directory for complete license and
 copyright information.
