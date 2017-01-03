@@ -2,8 +2,11 @@ import os
 import unittest
 import sys
 
+from doublescript.internals.asm_hooks import disable_pycode_optimize
+
 
 sys.dont_write_bytecode = True
+disable_pycode_optimize()
 
 current_dir = os.path.abspath(os.path.dirname(__file__))
 test_dir = os.path.join(current_dir, 'doublescript', 'tests')

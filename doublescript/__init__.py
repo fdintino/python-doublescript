@@ -1,3 +1,4 @@
+import os
 import pkg_resources
 import sys
 
@@ -12,7 +13,7 @@ from doublescript.internals.const import Py_TPFLAGS  # noqa
 from doublescript.internals.utils import clone_type  # noqa
 from doublescript.internals.structs import PyTypeObject  # noqa
 from doublescript.internals.typeobject import override_type, type_set_bases  # noqa
-from doublescript.internals.asm_hooks import override_pycode_optimize
+from doublescript.internals.asm_hooks import disable_pycode_optimize
 
 
 try:
@@ -20,7 +21,10 @@ try:
 except pkg_resources.DistributionNotFound:
     __version__ = None
 
-override_pycode_optimize()
+
+if os.environ.get('DOUBLEPLUSNOPYTHONOPT'):
+    disable_pycode_optimize()
+
 
 thread_data = threading.local()
 
@@ -32,10 +36,6 @@ def __add__(self, other):
         with override_type(self, int):
             with override_type(other, int):
                 return int.__add__(self, other)
-
-
-def set_two_plus_two(new_sum):
-    thread_data.two_plus_two = new_sum
 
 
 int2 = clone_type(int, bases=(int,), __add__=__add__)
