@@ -403,7 +403,7 @@ class CDataObject(NullSafeStructure):
 
 
 CDataObject._fields_ = PyObject_fields + [
-    ('b_ptr', Py_ssize_t),
+    ('b_ptr', ctypes.POINTER(c_void_p)),
     ('b_needsfree', c_int),
     ('b_base', c_ptr(CDataObject)),
     ('b_size', Py_ssize_t),

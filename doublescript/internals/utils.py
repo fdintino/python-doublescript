@@ -97,3 +97,10 @@ def addressof(o):
         return ctypes.addressof(o)
     else:
         return id(o)
+
+
+def cdata_ptr(cdata):
+    if not isinstance(cdata, CDataType):
+        raise TypeError("Must be an instance of %s" % CDataType)
+    c_cdata = CDataObject.from_address(id(cdata))
+    return c_cdata.b_ptr.contents.value

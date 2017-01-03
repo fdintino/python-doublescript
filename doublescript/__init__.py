@@ -12,12 +12,15 @@ from doublescript.internals.const import Py_TPFLAGS  # noqa
 from doublescript.internals.utils import clone_type  # noqa
 from doublescript.internals.structs import PyTypeObject  # noqa
 from doublescript.internals.typeobject import override_type, type_set_bases  # noqa
+from doublescript.internals.asm_hooks import override_pycode_optimize
 
 
 try:
     __version__ = pkg_resources.get_distribution('python-doublescript').version
 except pkg_resources.DistributionNotFound:
     __version__ = None
+
+override_pycode_optimize()
 
 thread_data = threading.local()
 
