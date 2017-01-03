@@ -46,7 +46,7 @@ PyInt2_Type.tp_flags &= ~Py_TPFLAGS.INT_SUBCLASS
 
 
 @contextlib.contextmanager
-def change_two_plus_two(new_sum):
+def two_plus_two_equals(new_sum):
     old_val = thread_data.__dict__.setdefault('two_plus_two', 4)
     thread_data.two_plus_two = new_sum
     with override_type(2, int2):
