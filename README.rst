@@ -22,8 +22,7 @@ Usage
     with two_plus_two_equals(5):
         print(eval("2 + 2"))  # prints "5"
 
-Or, if you’re feeling adventurous (currently only works on x86 architectures
-running some flavor of Linux/Unix/BSD, including OS X)::
+Or, if you’re feeling adventurous (currently only works on x86 architectures)::
 
     export DOUBLEPLUSNOPYTHONOPT=1
 
@@ -47,7 +46,9 @@ your scripts. This applies equally to .pyc files: if the pyc files were
 generated with the normal python opcode optimizations, this library will have
 no effect on inline ``2 + 2`` expressions, since they will have already been
 turned into ``4``. At present, disabling opcode optimizations only works in x86
-architectures, and it does not currently work on windows.
+architectures.
+
+Also, to state the obvious: don’t use this library in production.
 
 License
 -------

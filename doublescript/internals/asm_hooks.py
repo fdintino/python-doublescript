@@ -1,10 +1,11 @@
 import ctypes
 import ctypes.util
-from ctypes import c_void_p, c_size_t, c_int, py_object, pythonapi, CFUNCTYPE, c_ubyte
+from ctypes import (
+    c_void_p, c_size_t, c_int, py_object, pythonapi, CFUNCTYPE, c_ubyte,
+    c_long, c_ulong, c_ulonglong, POINTER)
 import errno
 import os
 import platform
-import resource
 import struct
 import warnings
 
@@ -13,20 +14,81 @@ import seven
 from .utils import cdata_ptr
 from .refs import Py_INCREF
 
+try:
+    import resource
+except ImportError:
+    PAGE_SIZE = None  # windows
+else:
+    PAGE_SIZE = resource.getpagesize()
 
-PAGE_SIZE = resource.getpagesize()
 
+IS_X86 = (platform.machine() in ('i386', 'i486', 'i586', 'i686', 'x86', 'x86_64'))
+IS_WINDOWS = (platform.system() == 'Windows')
+IS_64BIT = ctypes.sizeof(c_void_p) == ctypes.sizeof(c_ulonglong)
 
+# <sys/mman.h> constants
 PROT_NONE = 0   # The memory cannot be accessed at all
 PROT_READ = 1   # The memory can be read
 PROT_WRITE = 2  # The momory can be modified
 PROT_EXEC = 4   # The memory can be executed
 
+# Microsoft, what's the point of using bitmasks if you can't OR the values?
+PAGE_NOACCESS = 0x01
+PAGE_READONLY = 0x02
+PAGE_READWRITE = 0x04
+PAGE_WRITECOPY = 0x08
+PAGE_EXECUTE = 0x10
+PAGE_EXECUTE_READ = 0x20
+PAGE_EXECUTE_READWRITE = 0x40
 
-# TODO: Use VirtualProtect on windows
+MS_PAGE_CONSTANTS = {
+    PROT_NONE: PAGE_NOACCESS,
+    PROT_READ: PAGE_READONLY,
+    PROT_WRITE: PAGE_READWRITE,
+    (PROT_WRITE | PROT_READ): PAGE_READWRITE,
+    PROT_EXEC: PAGE_EXECUTE,
+    (PROT_EXEC | PROT_READ): PAGE_EXECUTE_READ,
+    (PROT_EXEC | PROT_WRITE): PAGE_EXECUTE_READWRITE,
+    (PROT_EXEC | PROT_WRITE | PROT_READ): PAGE_EXECUTE_READWRITE,
+}
+
+# windows datatypes
+BOOL = c_long
+DWORD = c_ulong
+SIZE_T = c_ulonglong if IS_64BIT else DWORD
+LPVOID = c_void_p
+PDWORD = POINTER(DWORD)
+
+
+def mprotect_winapi(addr, size, flags):
+    kernel32 = ctypes.windll.kernel32
+    VirtualProtect = kernel32.VirtualProtect
+    VirtualProtect.argtypes = [LPVOID, SIZE_T, DWORD, PDWORD]
+    VirtualProtect.restype = BOOL
+    old_prot = DWORD()
+    prot = MS_PAGE_CONSTANTS[flags]
+    ret = VirtualProtect(addr, size, prot, ctypes.byref(old_prot))
+    if not ret:
+        raise ctypes.WinError()
+
+
+def mprotect_libc(addr, size, flags):
+    libc = ctypes.CDLL(ctypes.util.find_library('libc'), use_errno=True)
+    libc.mprotect.argtypes = [c_void_p, c_size_t, c_int]
+    libc.mprotect.restype = c_int
+    addr_align = addr & ~(PAGE_SIZE - 1)
+    memlen = PAGE_SIZE
+    # In the unlikely event that the first five bytes of the function occur
+    # across a page boundary, we need to call mprotect on two pages
+    if ((addr + size) - addr_align) > PAGE_SIZE:
+        memlen *= 2
+    ret = libc.mprotect(addr_align, memlen, flags)
+    if ret == -1:
+        e = ctypes.get_errno()
+        raise OSError(e, errno.errorcodes[e], os.strerror(e))
+
+
 def mprotect(addr, size, flags):
-    if addr % PAGE_SIZE != 0:
-        raise Exception("mprotect address must be aligned to a page boundary")
     if not isinstance(addr, seven.integer_types):
         raise ValueError("addr must be an integer type")
     if not isinstance(size, seven.integer_types):
@@ -38,13 +100,10 @@ def mprotect(addr, size, flags):
             "flags must be a bitmask of PROT_NONE(%d), PROT_READ (%d), "
             "PROT_WRITE (%d), and/or PROT_EXEC (%d)" % (
                 PROT_NONE, PROT_READ, PROT_WRITE, PROT_EXEC))
-    libc = ctypes.CDLL(ctypes.util.find_library('libc'), use_errno=True)
-    libc.mprotect.argtypes = [c_void_p, c_size_t, c_int]
-    libc.mprotect.restype = c_int
-    ret = libc.mprotect(addr, size, flags)
-    if ret == -1:
-        e = ctypes.get_errno()
-        raise OSError(e, errno.errorcodes[e], os.strerror(e))
+    if IS_WINDOWS:
+        mprotect_winapi(addr, size, flags)
+    else:
+        mprotect_libc(addr, size, flags)
 
 
 def pycode_optimize(code, consts, name, lineno_obj):
@@ -57,14 +116,6 @@ quaternaryfunc = CFUNCTYPE(
 
 
 Override_PyCode_Optimize = quaternaryfunc(pycode_optimize)
-
-
-def is_x86():
-    return platform.machine() in ('i386', 'i486', 'i586', 'i686', 'x86', 'x86_64')
-
-
-def is_windows():
-    return platform.system() == 'Windows'
 
 
 class UnsupportedPlatformException(Exception):
@@ -80,21 +131,19 @@ def force_ord(char):
 
 
 def override_cfunc(cfunc, new_cfunc):
-    if not is_x86():
+    """
+    Overrides a CFUNCTION by inserting a JMP instruction at the function's
+    address in memory.
+
+    If the new cfunction doesn't have the same prototype as the old one,
+    this will almost certainly cause a segfault.
+    """
+    if not IS_X86:
         raise UnsupportedPlatformException(
             "override_cfunc() only works on x86 architectures")
-    if is_windows():
-        raise UnsupportedPlatformException(
-            "override_cfunc() does not work on windows")
     old_cfunc_ptr = cdata_ptr(cfunc)
     new_cfunc_ptr = cdata_ptr(new_cfunc)
-    page_boundary = int((old_cfunc_ptr // PAGE_SIZE) * PAGE_SIZE)
-    memlen = PAGE_SIZE
-    # In the unlikely event that the first five bytes of the function occur
-    # across a page boundary, we need to call mprotect on two pages
-    if page_boundary + PAGE_SIZE - old_cfunc_ptr < 5:
-        memlen *= 2
-    mprotect(page_boundary, memlen, PROT_READ | PROT_WRITE | PROT_EXEC)
+    mprotect(old_cfunc_ptr, 5, PROT_READ | PROT_WRITE | PROT_EXEC)
     offset = new_cfunc_ptr - old_cfunc_ptr
     JMP = b'\xe9'
     opcodes = list(map(force_ord, JMP + struct.pack('<l', offset - 5)))
