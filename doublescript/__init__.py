@@ -13,7 +13,7 @@ from doublescript.internals.const import Py_TPFLAGS  # noqa
 from doublescript.internals.utils import clone_type  # noqa
 from doublescript.internals.structs import PyTypeObject  # noqa
 from doublescript.internals.typeobject import override_type, type_set_bases  # noqa
-from doublescript.internals.asm_hooks import disable_pycode_optimize
+from doublescript.internals.asm_hooks import disable_peephole_optimizer
 
 
 try:
@@ -23,7 +23,7 @@ except pkg_resources.DistributionNotFound:
 
 
 if os.environ.get('DOUBLEPLUSNOPYTHONOPT'):
-    disable_pycode_optimize()
+    disable_peephole_optimizer()
 
 
 thread_data = threading.local()

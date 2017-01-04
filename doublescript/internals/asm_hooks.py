@@ -77,11 +77,10 @@ def mprotect_libc(addr, size, flags):
     libc.mprotect.argtypes = [c_void_p, c_size_t, c_int]
     libc.mprotect.restype = c_int
     addr_align = addr & ~(PAGE_SIZE - 1)
-    memlen = PAGE_SIZE
-    # In the unlikely event that the first five bytes of the function occur
-    # across a page boundary, we need to call mprotect on two pages
-    if ((addr + size) - addr_align) > PAGE_SIZE:
-        memlen *= 2
+    mem_end = (addr + size) & ~(PAGE_SIZE - 1)
+    if (addr + size) > mem_end:
+        mem_end += PAGE_SIZE
+    memlen = mem_end - addr_align
     ret = libc.mprotect(addr_align, memlen, flags)
     if ret == -1:
         e = ctypes.get_errno()
@@ -89,6 +88,13 @@ def mprotect_libc(addr, size, flags):
 
 
 def mprotect(addr, size, flags):
+    """
+    A cross-platform mprotect function (calls VirtualProtect on windows,
+    mprotect otherwise).
+
+    For mprotect_libc, addr does not have to be aligned to page boundaries;
+    this implementation will ensure that an aligned address gets passed.
+    """
     if not isinstance(addr, seven.integer_types):
         raise ValueError("addr must be an integer type")
     if not isinstance(size, seven.integer_types):
@@ -106,8 +112,16 @@ def mprotect(addr, size, flags):
         mprotect_libc(addr, size, flags)
 
 
-def pycode_optimize(code, consts, name, lineno_obj):
+def noop_pycode_optimize(code, consts, name, lineno_obj):
+    """
+    A function intended to replace PyCode_Optimize. Whereas PyCode_Optimize
+    takes ``code`` (python bytecode) and returns peephole-optimized bytecode,
+    this function effectively disables the peephole optimizer by simply
+    returning the original bytecode after incrementing its reference count.
+    """
     Py_INCREF(code)
+    # ctypes doesn't allow returning pointers to python objects, so we simply
+    # return the address of the PyObject
     return id(code)
 
 
@@ -115,7 +129,7 @@ quaternaryfunc = CFUNCTYPE(
     c_void_p, py_object, py_object, py_object, py_object)
 
 
-Override_PyCode_Optimize = quaternaryfunc(pycode_optimize)
+NoOp_PyCode_Optimize = quaternaryfunc(noop_pycode_optimize)
 
 
 class UnsupportedPlatformException(Exception):
@@ -151,8 +165,8 @@ def override_cfunc(cfunc, new_cfunc):
     old_cfunc_mem[0:5] = opcodes
 
 
-def disable_pycode_optimize():
+def disable_peephole_optimizer():
     try:
-        override_cfunc(pythonapi.PyCode_Optimize, Override_PyCode_Optimize)
+        override_cfunc(pythonapi.PyCode_Optimize, NoOp_PyCode_Optimize)
     except UnsupportedPlatformException as e:
         warnings.warn("%s" % e)
