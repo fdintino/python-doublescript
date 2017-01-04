@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import codecs
+
 try:
     from setuptools import setup, find_packages
 except ImportError:
@@ -16,7 +18,7 @@ setup(
     url='https://github.com/fdintino/python-doublescript',
     description=(
         'allows changing the value of "2 + 2" (generally to equal "5") at runtime'),
-    long_description=open('README.rst').read(),
+    long_description=codecs.open('README.rst', encoding='utf-8').read(),
     packages=find_packages(),
     zip_safe=True,
     install_requires=[
