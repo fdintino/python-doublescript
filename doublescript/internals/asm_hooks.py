@@ -1,4 +1,5 @@
 import ctypes
+import ctypes.util
 from ctypes import c_void_p, c_size_t, c_int, py_object, pythonapi, CFUNCTYPE, c_ubyte
 import errno
 import os
