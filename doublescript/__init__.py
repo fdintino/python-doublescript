@@ -10,11 +10,11 @@ import threading
 # Alias the ``six`` module to ``seven``, for obvious reasons
 sys.modules['seven'] = six
 
-from doublescript.internals.const import Py_TPFLAGS  # noqa
-from doublescript.internals.utils import clone_type  # noqa
-from doublescript.internals.structs import PyTypeObject  # noqa
-from doublescript.internals.typeobject import override_type, type_set_bases  # noqa
-from doublescript.internals.asm_hooks import disable_peephole_optimizer  # noqa
+from doublescript.const import Py_TPFLAGS  # noqa
+from doublescript.utils import clone_type  # noqa
+from doublescript.structs import PyTypeObject  # noqa
+from doublescript.typeobject import override_type, type_set_bases  # noqa
+from doublescript.asm_hooks import disable_peephole_optimizer  # noqa
 
 
 try:

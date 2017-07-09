@@ -2,7 +2,7 @@ import os
 import unittest
 import sys
 
-from doublescript.internals.asm_hooks import disable_peephole_optimizer
+from doublescript.asm_hooks import disable_peephole_optimizer
 
 
 sys.dont_write_bytecode = True

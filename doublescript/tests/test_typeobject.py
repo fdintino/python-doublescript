@@ -2,7 +2,7 @@ import gc
 import sys
 import unittest
 
-from doublescript.internals.typeobject import set_type, type_set_bases
+from doublescript.typeobject import set_type, type_set_bases
 
 
 def a_factory(set_b_base=False):
