@@ -12,6 +12,17 @@ novel *1984* by George Orwell, but the motivation is to explore CPython
 internals and how one would go about monkey-patching those internals at
 runtime using ctypes.
 
+This package was the subject of a talk at
+`EuroPython 2017`_: `2 + 2 = 5`_:
+`Monkey-patching CPython with ctypes to conform to Party doctrine`__
+(`slides`_). The video will be posted when it is made available.
+
+.. _EuroPython 2017: https://ep2017.europython.eu/
+.. _`2 + 2 = 5`: https://ep2017.europython.eu/conference/talks/2-2-5-monkey-patching-cpython-with-ctypes-to-conform-to-party-doctrine
+.. _slides: https://www.slideshare.net/fdintino/2-2-5-monkeypatching-cpython-with-ctypes-to-conform-to-party-doctrine
+
+__ `2 + 2 = 5`_
+
 Usage
 -----
 
