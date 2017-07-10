@@ -30,37 +30,18 @@ if os.environ.get('DOUBLEPLUSNOPYTHONOPT'):
 thread_data = threading.local()
 
 
-int2 = None
-PyInt2_Type = None
-int_bases = (builtins.int,)
-
-
-def __add__(self, other):
-    if self == other == 2:
-        return thread_data.__dict__.setdefault('two_plus_two', 4)
-    else:
-        with override_type(self, int):
-            with override_type(other, int):
-                return int.__add__(self, other)
-
-
-def get_int2():
-    global int2, PyInt2_Type, int_bases
-
-    if int2 is not None:
-        return int2
-
-    int2 = clone_type(builtins.int, bases=int_bases, __add__=__add__)
-    type_set_bases(int2, int_bases)
-    PyInt2_Type = PyTypeObject.from_address(id(int2))
-    PyInt2_Type.tp_name = b'int2'
-    PyInt2_Type.tp_flags &= ~Py_TPFLAGS.INT_SUBCLASS
-    return int2
+class int2(int):
+    def __add__(self, other):
+        if self == other == 2:
+            return thread_data.__dict__.setdefault('two_plus_two', 4)
+        else:
+            with override_type(self, int):
+                with override_type(other, int):
+                    return int.__add__(self, other)
 
 
 @contextlib.contextmanager
 def two_plus_two_equals(new_sum):
-    int2 = get_int2()
     old_val = thread_data.__dict__.setdefault('two_plus_two', 4)
     thread_data.two_plus_two = new_sum
     with override_type(2, int2):
